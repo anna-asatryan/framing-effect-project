@@ -1,0 +1,504 @@
+---
+title: "DAE Project"
+author: "Anna Asatryan"
+date: "2025-11-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(rcompanion)
+library(ggplot2)
+library(effsize)
+library(psych)
+library(ez)
+```
+
+
+**Data Preparation**
+
+```{r}
+pos <- read.csv("data/PositiveFrame.csv", sep = ";")
+neg <- read.csv("data/NegativeFrame.csv", sep = ";")
+```
+
+Renaming columns
+```{r}
+pos <- pos %>% rename(
+  Gender = What.is.your.gender.,
+  AgeGroup = Which.age.group.do.you.belong.to.,
+
+  S1_Decision = X1.1..Would.you.consider.purchasing.this.supplement.,
+  S1_Confidence = X1.2..How.confident.are.you.in.your.decision....1...Not.confident.at.all..7...Very.confident.,
+  S1_Effectiveness = X1.3..How.effective.do.you.think.this.supplement.is...1...Not.effective..7...Very.effective.,
+
+  S2_Decision = X2.1..Would.you.sign.up.for.this.savings.plan.,
+  S2_Confidence = X2.2..How.confident.are.you.in.your.decision.,
+  S2_Effectiveness = X2.3..How.effective.do.you.think.this.savings.plan.is.,
+
+  S3_Decision = X3.1..Would.you.register.for.this.recycling.program.,
+  S3_Confidence = X3.2..How.confident.are.you.in.your.decision.,
+  S3_Effectiveness = X3.3..How.effective.do.you.think.this.program.is.,
+
+  DecisionStyle = Lastly..how.would.you.describe.your.decision.making.style.
+)
+
+neg <- neg %>% rename(
+  Gender = What.is.your.gender.,
+  AgeGroup = Which.age.group.do.you.belong.to.,
+
+  S1_Decision = X1.1..Would.you.consider.purchasing.this.supplement.,
+  S1_Confidence = X1.2..How.confident.are.you.in.your.decision.....1...Not.confident.at.all..7...Very.confident.,
+  S1_Effectiveness = X1.3..How.effective.do.you.think.this.supplement.is.....1...Not.effective..7...Very.effective.,
+
+  S2_Decision = X2.1..Would.you.sign.up.for.this.savings.plan.,
+  S2_Confidence = X2.2..How.confident.are.you.in.your.decision.,
+  S2_Effectiveness = X2.3..How.effective.do.you.think.this.savings.plan.is.,
+
+  S3_Decision = X3.1..Would.you.register.for.this.recycling.program.,
+  S3_Confidence = X3.2..How.confident.are.you.in.your.decision.,
+  S3_Effectiveness = X3.3..How.effective.do.you.think.this.program.is.,
+
+  DecisionStyle = Lastly..how.would.you.describe.your.decision.making.style.
+)
+```
+
+
+```{r}
+names(pos)
+names(neg)
+```
+
+Merging the DFs with FrameType column
+```{r}
+pos$FrameType <- 1
+neg$FrameType <- 0
+data <- rbind(pos, neg)
+```
+
+
+Data types
+```{r}
+data$S1_Decision <- ifelse(data$S1_Decision == "Yes", 1, 0)
+data$S2_Decision <- ifelse(data$S2_Decision == "Yes", 1, 0)
+data$S3_Decision <- ifelse(data$S3_Decision == "Yes", 1, 0)
+str(data[, c("S1_Decision", "S2_Decision", "S3_Decision")])
+```
+
+
+Calculating averages
+```{r}
+data$DecisionComposite <- rowMeans(
+  data[, c("S1_Decision", "S2_Decision", "S3_Decision")]
+)
+
+data$ConfidenceComposite <- rowMeans(
+  data[, c("S1_Confidence", "S2_Confidence", "S3_Confidence")]
+)
+
+data$EffectivenessComposite <- rowMeans(
+  data[, c("S1_Effectiveness", "S2_Effectiveness", "S3_Effectiveness")]
+)
+```
+
+```{r}
+head(data)
+```
+
+
+**Data Analysis**
+
+```{r}
+psych::alpha(data[, c("S1_Decision", "S2_Decision", "S3_Decision")])
+psych::alpha(data[, c("S1_Confidence", "S2_Confidence", "S3_Confidence")])
+psych::alpha(data[, c("S1_Effectiveness", "S2_Effectiveness", "S3_Effectiveness")])
+```
+
+
+*Cronbach’s α Reliability Analysis*
+To assess whether responses across the three scenarios reflected consistent underlying constructs, internal reliability was evaluated using Cronbach’s α for decision choice, confidence, and perceived effectiveness items.
+
+*Decision Choices (binary Yes/No items)*
+Reliability was excellent, α = 0.92, indicating that participants who accepted one option tended to accept the others across contexts.
+This supports the interpretation that individuals hold a stable "willingness to act" tendency.
+
+*Confidence Ratings (1–7 scale)*
+Reliability was moderate, α = 0.67, consistent with the idea that confidence varies meaningfully by domain (health, finance, environment). 
+This outcome is expected, as confidence often varies substantially by context 
+(e.g., participants may feel highly confident about environmental decisions but less certain about the ones involving personal health).
+Despite the moderate reliability, the items still showed positive correlations, and following the planned analysis approach, 
+a Confidence Composite was computed by averaging the three confidence scores to examine framing effects on overall decision certainty.
+
+*Perceived Effectiveness Ratings (1–7 scale)*
+Reliability was high, α = 0.89, suggesting that effectiveness perceptions were judged consistently across scenarios.
+A composite effectiveness index was therefore appropriate.
+
+So, internal consistency estimates indicated that composite scores for decision, confidence, and effectiveness were 
+appropriate for further analysis.
+
+
+**Hypothesis testing**
+
+Positive vs Negative Frames
+```{r}
+long_decisions <- data %>%
+  select(FrameType, S1_Decision, S2_Decision, S3_Decision) %>%
+  pivot_longer(cols = starts_with("S"), names_to = "Scenario", values_to = "Decision")
+
+head(long_decisions)
+```
+
+
+*H₁: Participants exposed to positive framing will show a higher rate of affirmative (“Yes”) choices than those exposed to negative framing*
+```{r}
+decision_table <- long_decisions %>%
+  group_by(FrameType) %>%
+  summarise(
+    Yes = sum(Decision),
+    No = n() - sum(Decision),
+    Total = n()
+  )
+
+decision_table
+```
+
+
+
+```{r}
+decision_matrix <- matrix(c(1, 44,
+                            41, 4),
+                          nrow = 2, byrow = TRUE)
+
+rownames(decision_matrix) <- c("Negative", "Positive")
+colnames(decision_matrix) <- c("Yes", "No")
+
+decision_matrix
+
+chisq.test(decision_matrix)
+cramerV(decision_matrix)
+```
+
+To test whether framing influenced participants’ decision choices, a chi-square test of independence 
+was conducted on the three Yes/No decisions aggregated per framing condition. The contingency table 
+showed a striking divergence in choices across conditions: in the negative frame, only 1 out of 45 responses 
+were affirmative, whereas 41 out of 45 responses were affirmative in the positive frame.
+The chi-square test revealed a highly significant association between framing condition and decision choice,
+χ²(1, N = 90) = 67.90, p < .001.
+
+The effect size, measured using Cramer’s V, was 0.89, indicating an extremely large framing effect.
+These results strongly support H₁, showing that participants were far more likely to choose the affirmative option 
+when the information was presented in positive terms compared to negative terms.
+
+
+```{r}
+plot_decision <- long_decisions %>%
+  group_by(FrameType) %>%
+  summarise(YesRate = mean(Decision)) %>%
+  mutate(Frame = ifelse(FrameType == 1, "Positive", "Negative"))
+
+ggplot(plot_decision, aes(x = Frame, y = YesRate, fill = Frame)) +
+  geom_col(width = 0.6, color = "black") +
+  geom_text(aes(label = round(YesRate,2)), vjust = -0.5, size = 5) +
+  scale_fill_manual(values = c("Positive"="#4CAF50", "Negative"="#F44336")) +
+  labs(title="Proportion of 'Yes' Decisions by Frame Type",
+       y="Yes Proportion", x="Framing Condition") +
+  theme_minimal(base_size = 15)
+```
+
+
+
+*H₂: Participants in the positive frame condition will report higher confidence in their decisions*
+```{r}
+conf_descriptives <- data %>%
+  group_by(FrameType) %>%
+  summarise(
+    n = n(),
+    mean_conf = mean(ConfidenceComposite),
+    sd_conf = sd(ConfidenceComposite)
+  )
+
+conf_descriptives
+```
+
+Participants in the negative frame actually reported much higher confidence.
+SDs look unequal (0.52 vs 1.12) → We must use Welch t-test
+
+
+Independent sample T tests for confidence
+```{r}
+t_test_conf <- t.test(ConfidenceComposite ~ FrameType, data = data)
+t_test_conf
+```
+
+
+```{r}
+cohen.d(ConfidenceComposite ~ FrameType, data = data)
+```
+
+
+To test whether framing influenced confidence ratings, we conducted a Welch independent samples t-test 
+comparing the Negative frame (0) and Positive frame (1) conditions.
+Participants in the negative frame reported substantially higher confidence (M = 6.38, SD = 0.52) than those in the 
+positive frame (M = 4.82, SD = 1.12). The difference was statistically significant:
+t(19.73) = 4.89, p < .001, 95% CI [0.89, 2.22].
+
+The effect size was very large,
+Cohen’s d = 1.78, 95% CI [0.90, 2.67].
+These results do not support H₂; instead of increasing confidence, positive framing decreased confidence compared to 
+negative framing in this sample.
+
+
+```{r}
+ggplot(data, aes(x = factor(FrameType, labels = c("Negative", "Positive")),
+                 y = ConfidenceComposite,
+                 fill = factor(FrameType))) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.15, alpha = 0.6) +
+  scale_fill_manual(values = c("#E74C3C", "#2ECC71")) +
+  labs(
+    title = "Confidence Ratings by Frame Type",
+    x = "Frame Type",
+    y = "Confidence (1–7)"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
+
+
+*H₃: Participants in the positive frame condition will perceive the described options as more effective.*
+```{r}
+data %>%
+  group_by(FrameType) %>%
+  summarise(
+    n = n(),
+    mean_eff = mean(EffectivenessComposite),
+    sd_eff = sd(EffectivenessComposite)
+  )
+```
+
+
+Participants exposed to the positive frame rated the described option as much more effective than those in the negative frame.
+
+```{r}
+t.test(EffectivenessComposite ~ FrameType, data = data)
+```
+
+
+```{r}
+cohen.d(EffectivenessComposite ~ FrameType, data = data)
+```
+
+The difference between groups is highly statistically significant (p < 0.0001).
+The confidence interval shows that the true mean difference likely lies between about −3.0 and −1.9 points.
+The negative sign reflects the order of the factor levels rather than a decrease; 
+effectiveness was substantially higher in the positive frame.
+
+This strongly supports H₃.
+
+The effect is 3.35, which is enormous by behavioral science standards.
+In psychology, thresholds are usually:
+0.2 = small
+0.5 = medium
+0.8 = large
+3.35 means the two distributions barely overlap.
+This means framing has a very powerful effect on perceived effectiveness.
+
+```{r}
+ggplot(data, aes(x = factor(FrameType,
+                           labels = c("Negative","Positive")),
+                 y = EffectivenessComposite,
+                 fill = factor(FrameType))) +
+  geom_boxplot(alpha = 0.6) +
+  geom_jitter(width = 0.15, size = 2) +
+  scale_fill_manual(values = c("#e76f51", "#2a9d8f")) +
+  labs(
+    title = "Perceived Effectiveness by Frame Type",
+    x = "Frame Type",
+    y = "Effectiveness Rating (1–7)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none")
+```
+
+
+*H₄: The strength of the framing effect will not significantly differ across domains (health, finance, environment), indicating generalization across everyday contexts.*
+
+```{r}
+data$ID <- 1:nrow(data)
+```
+
+```{r}
+long_effect <- data %>%
+  select(ID, FrameType,
+         S1_Effectiveness, S2_Effectiveness, S3_Effectiveness) %>%
+  pivot_longer(
+    cols = starts_with("S"),
+    names_to = "Domain",
+    values_to = "Effectiveness"
+  ) %>%
+  mutate(
+    Domain = factor(Domain,
+                    levels = c("S1_Effectiveness", "S2_Effectiveness", "S3_Effectiveness"),
+                    labels = c("Health", "Finance", "Environment")),
+    FrameType = factor(FrameType, labels = c("Negative","Positive"))
+  )
+
+head(long_effect)
+```
+
+
+```{r}
+anova_effect <- ezANOVA(
+  data = long_effect,
+  dv = Effectiveness,
+  wid = ID,
+  within = Domain,
+  between = FrameType,
+  type = 3,
+  detailed = TRUE
+)
+
+anova_effect
+```
+
+
+To examine whether the framing manipulation had different strengths across the three decision domains (health, finance, environment), a mixed ANOVA was conducted with Frame Type as a between-subjects factor and Domain as a within-subjects factor.
+
+There was a main effect of Frame Type, F(1,28) ≈ 84.39, p < .001, indicating that positive framing consistently increased perceived effectiveness.
+
+There was also a main effect of Domain, F(2,56) ≈ 9.74, p < .001, meaning some scenarios were generally perceived as more effective than others.
+
+Crucially, the Frame Type × Domain interaction was non-significant,
+F(2,56) ≈ 0.32, p = .726.
+
+Because Mauchly’s test indicated violations of sphericity (p ≈ .0006), Greenhouse–Geisser and Huynh–Feldt corrections were applied. The interaction remained non-significant under both corrections.
+
+*Conclusion*
+The framing effect generalized across all three decision domains. Positive framing increased perceived effectiveness to a similar degree in health, financial, and environmental contexts.
+Thus, H₄ is supported: the strength of the framing effect does not depend on domain.
+
+
+```{r}
+ggplot(long_effect, aes(x = Domain, y = Effectiveness,
+                        color = FrameType, group = FrameType)) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  labs(
+    title = "Interaction Plot: Effectiveness Across Domains",
+    x = "Domain",
+    y = "Perceived Effectiveness (1–7)",
+    color = "Frame Type"
+  ) +
+  scale_color_manual(values = c("Negative" = "#D55E00", "Positive" = "#009E73")) +
+  theme_minimal(base_size = 14)
+```
+
+
+**Demograohics**
+
+```{r}
+data$Gender <- factor(data$Gender)
+data$AgeGroup <- factor(data$AgeGroup)
+data$DecisionStyle <- factor(data$DecisionStyle)
+```
+
+
+```{r}
+summary(data$Gender)
+summary(data$AgeGroup)
+summary(data$DecisionStyle)
+```
+
+
+```{r}
+table(data$Gender, data$FrameType)
+table(data$AgeGroup, data$FrameType)
+table(data$DecisionStyle, data$FrameType)
+```
+
+
+```{r}
+data$ID <- 1:nrow(data)
+
+long_decisions <- data %>%
+  select(ID, FrameType, S1_Decision, S2_Decision, S3_Decision) %>%
+  pivot_longer(
+    cols = starts_with("S"),
+    names_to = "Scenario",
+    values_to = "Decision"
+  )
+
+```
+
+
+Rates of 'yes' by demographics
+```{r}
+yes_by_demo <- long_decisions %>%
+  left_join(data %>% select(ID, Gender, AgeGroup, DecisionStyle), by = "ID") %>%
+  group_by(Gender) %>%
+  summarise(YesRate = mean(Decision))
+
+yes_by_demo
+```
+
+
+```{r}
+yes_by_age <- long_decisions %>%
+  left_join(data %>% select(ID, AgeGroup), by = "ID") %>%
+  group_by(AgeGroup) %>%
+  summarise(YesRate = mean(Decision))
+
+yes_by_age
+```
+
+
+```{r}
+yes_by_style <- long_decisions %>%
+  left_join(data %>% select(ID, DecisionStyle), by = "ID") %>%
+  group_by(DecisionStyle) %>%
+  summarise(YesRate = mean(Decision))
+
+yes_by_style
+```
+
+
+```{r}
+ggplot(yes_by_style, aes(x = DecisionStyle, y = YesRate, fill = DecisionStyle)) +
+  geom_col(color = "black") +
+  scale_y_continuous(limits = c(0,1)) +
+  labs(title = "Proportion of Yes Decisions by Decision Style",
+       y = "Yes Rate", x = "Decision Style") +
+  theme_minimal()
+```
+
+
+
+
+```{r}
+ggplot(yes_by_age, aes(x = AgeGroup, y = YesRate, fill = AgeGroup)) +
+  geom_col(color = "black") +
+  scale_y_continuous(limits = c(0,1)) +
+  labs(title = "Proportion of Yes Decisions by Age Group",
+       y = "Yes Rate", x = "Age Group") +
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(yes_by_demo, aes(x = Gender, y = YesRate, fill = Gender)) +
+  geom_col(color = "black") +
+  scale_y_continuous(limits = c(0,1)) +
+  labs(title = "Proportion of Yes Decisions by Gender",
+       y = "Yes Rate", x = "Gender") +
+  theme_minimal()
+```
+
+
+
+

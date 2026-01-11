@@ -1,0 +1,26 @@
+"0","neg <- neg %>% rename(
+  Gender = What.is.your.gender.,
+  AgeGroup = Which.age.group.do.you.belong.to.,
+
+  S1_Decision = X1.1..Would.you.consider.purchasing.this.supplement.,
+  S1_Confidence = X1.2..How.confident.are.you.in.your.decision....1...Not.confident.at.all..7...Very.confident.,
+  S1_Effectiveness = X1.3..How.effective.do.you.think.this.supplement.is...1...Not.effective..7...Very.effective.,
+
+  S2_Decision = X2.1..Would.you.sign.up.for.this.savings.plan.,
+  S2_Confidence = X2.2..How.confident.are.you.in.your.decision.,
+  S2_Effectiveness = X2.3..How.effective.do.you.think.this.savings.plan.is.,
+
+  S3_Decision = X3.1..Would.you.register.for.this.recycling.program.,
+  S3_Confidence = X3.2..How.confident.are.you.in.your.decision.,
+  S3_Effectiveness = X3.3..How.effective.do.you.think.this.program.is.,
+
+  DecisionStyle = Lastly..how.would.you.describe.your.decision.making.style.
+)
+"
+"1","[1m[33mError[39m in `rename()`:[22m
+[33m![39m Can't rename columns that don't exist.
+[31m✖[39m Column `X1.2..How.confident.are.you.in.your.decision....1...Not.confident.at.all..7...Very.confident.` doesn't exist.
+Backtrace:
+[90m 1. [39mneg %>% ...
+[90m 3. [39m[1m[94mdplyr:::rename.data.frame([39m[22m...[1m[94m)[39m[22m
+"

@@ -1,0 +1,48 @@
+"0","decision_matrix <- matrix(c(1, 44,
+                            41, 4),
+                          nrow = 2, byrow = TRUE)
+
+rownames(decision_matrix) <- c(""Negative"", ""Positive"")
+colnames(decision_matrix) <- c(""Yes"", ""No"")
+
+decision_matrix
+"
+"1","        "
+"1"," Yes"
+"1"," No"
+"1","
+Negative"
+"1","   1"
+"1"," 44"
+"1","
+Positive"
+"1","  41"
+"1","  4"
+"1","
+"
+"0","chisq.test(decision_matrix)"
+"1","
+"
+"1","	Pearson's Chi-squared test with Yates' continuity correction"
+"1","
+"
+"1","
+"
+"1","data:  "
+"1",""
+"1","decision_matrix"
+"1",""
+"1","
+"
+"1","X-squared = 67.902, df = 1, p-value < 2.2e-16"
+"1","
+"
+"1","
+"
+"0","cramerV(decision_matrix)"
+"1","Cramer V "
+"1","
+"
+"1","  0.8909 "
+"1","
+"
